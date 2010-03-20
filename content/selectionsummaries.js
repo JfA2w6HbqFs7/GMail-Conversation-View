@@ -704,9 +704,19 @@ document.addEventListener("load", function f_temp0 () {
    * display the thread in a new tab and represents the message that was
    * originally selected. */
   function pullConversation(aSelectedMessages, k) {
+    /* XXX tentative algorithm for dealing with non-strict threads.
+     *
+     * Get the first conversation. Mark in a Hashtbl all the messages we've
+     * found according to their messageId. Move on to the remaining messages
+     * from aItems. If they haven't been marked in the Hashtbl, re-launch a
+     * conversation search for them too. Repeat the process until all messages
+     * in aItems have been marked or aItems is empty.
+     * */
     try {
+      dump("### There are currently "+aSelectedMessages.length+" messages selected\n");
       gconversation.stash.q1 = Gloda.getMessageCollectionForHeaders(aSelectedMessages, {
         onItemsAdded: function (aItems) {
+          dump("### They correspond to "+aItems.length+" GlodaMessages\n");
           if (!aItems.length) {
             dump("!!! GConversation: gloda query returned no messages!\n");
             k(null, aSelectedMessages, aSelectedMessages[0]);
@@ -721,7 +731,10 @@ document.addEventListener("load", function f_temp0 () {
             /* That's a XPConnect bug. bug 547088, so track the
              * bug and remove the setTimeout when it's fixed and bump the
              * version requirements in install.rdf.template */
-            onQueryCompleted: function (aCollection) setTimeout(function () k(aCollection, aCollection.items, msg), 0),
+            onQueryCompleted: function (aCollection) {
+              dump("### The complete collection features "+aCollection.items.length+" messages\n");
+              setTimeout(function () k(aCollection, aCollection.items, msg), 0)
+            },
           }, true);
         },
         onItemsModified: function () {},
@@ -918,54 +931,81 @@ document.addEventListener("load", function f_temp0 () {
     onSecurityChange: function () {},
     onStatusChange: function () {},
     onLocationChange: function (aWebProgress, aRequest, aLocation) {
-      /* By testing here for the pref, we allow the pref to be changed at
-       * run-time and we do not require to restart Thunderbird to take the
-       * change into account. */
-      if (!g_prefs["auto_fetch"])
-        return;
-
-      /* The logic is as follows.
-       * i) The event handler stores the URI of the message we're jumping to.
-       * ii) We catch that message loading: we don't load a conversation.
-       * iii) We don't want to load a conversation if we're viewing a message
-       * that's in an expanded thread. */
-      let wantedUrl = gconversation.stash.wantedUrl;
-      gconversation.stash.wantedUrl = null;
-      let isExpanded = false;
-      let msgIndex = gFolderDisplay ? gFolderDisplay.selectedIndices[0] : -1;
-      if (msgIndex >= 0) {
-        let rootIndex = gDBView.findIndexOfMsgHdr(gDBView.getThreadContainingIndex(msgIndex).getChildHdrAt(0), false);
-        if (rootIndex >= 0)
-          isExpanded = gDBView.isContainer(rootIndex) && !gFolderDisplay.view.isCollapsedThreadAtIndex(rootIndex);
-      }
-      if (aLocation.spec == wantedUrl || isExpanded)
-        return;
-
-      let msgService;
       try {
-        msgService = gMessenger.messageServiceFromURI(aLocation.spec);
-      } catch ( { result } if result == Cr.NS_ERROR_FACTORY_NOT_REGISTERED ) {
-        dump("*** Not a message ("+aLocation.spec+")\n");
-        return;
-      }
-      let msgHdr = msgService.messageURIToMsgHdr(aLocation.QueryInterface(Ci.nsIMsgMessageUrl).uri);
-      pullConversation(
-        [msgHdr],
-        function (aCollection, aItems, aMsg) {
-          if (aCollection) {
-            let items = removeDuplicates(aCollection.items);
-            if (items.length <= 1)
-              return;
-            gSummary = new ThreadSummary(
-              [selectRightMessage(x, gDBView.msgFolder).folderMessage for each (x in items)],
-              null
-            );
-            gSummary.init();
-            gMessageDisplay.singleMessageDisplay = false;
-            return;
-          }
-      });
+        dump("\n ----- start autofetch -----\n");
+        /* By testing here for the pref, we allow the pref to be changed at
+         * run-time and we do not require to restart Thunderbird to take the
+         * change into account. */
+        if (!g_prefs["auto_fetch"]) {
+          dump("*** Automatically fetching conversations is disabled, skipping...\n");
+          return;
+        }
 
+        /* The logic is as follows.
+         * i) The event handler stores the URI of the message we're jumping to
+         * (first call of this function)
+         * ii) We catch that message loading: we don't load a conversation
+         * (second call of this function)
+         * iii) We don't want to load a conversation if we're viewing a message
+         * that's in an expanded thread. */
+        let wantedUrl = gconversation.stash.wantedUrl;
+        gconversation.stash.wantedUrl = null;
+        let isExpanded = false;
+        let msgIndex = gFolderDisplay ? gFolderDisplay.selectedIndices[0] : -1;
+        dump("*** msgIndex "+msgIndex+"\n");
+        if (msgIndex >= 0) {
+          let rootIndex = gDBView.findIndexOfMsgHdr(gDBView.getThreadContainingIndex(msgIndex).getChildHdrAt(0), false);
+          dump("*** rootIndex "+rootIndex+"\n");
+          if (rootIndex >= 0) {
+            dump("isContainer "+gDBView.isContainer(rootIndex)+"\n");
+            dump("isCollapsedThreadAtIndex "+gFolderDisplay.view.isCollapsedThreadAtIndex(rootIndex)+"\n");
+            isExpanded = gDBView.isContainer(rootIndex) && !gFolderDisplay.view.isCollapsedThreadAtIndex(rootIndex);
+          }
+        }
+        if (aLocation.spec == wantedUrl) {
+          dump("*** The user asked to view this specific message, not loading a conversation...\n");
+          return;
+        }
+        if (aLocation.spec == wantedUrl || isExpanded) {
+          dump("*** The thread is expanded, not loading a conversation...\n");
+          return;
+        }
+        dump("*** Seems ok to load the conversation, moving on...\n");
+
+        let msgService;
+        try {
+          msgService = gMessenger.messageServiceFromURI(aLocation.spec);
+        } catch ( { result } if result == Cr.NS_ERROR_FACTORY_NOT_REGISTERED ) {
+          dump("*** Not a message ("+aLocation.spec+")\n");
+          return;
+        }
+        let msgHdr = msgService.messageURIToMsgHdr(aLocation.QueryInterface(Ci.nsIMsgMessageUrl).uri);
+        pullConversation(
+          [msgHdr],
+          function (aCollection, aItems, aMsg) {
+            if (aCollection) {
+              try {
+                dump("*** Got the messages we wanted, displaying...\n");
+                let items = removeDuplicates(aCollection.items);
+                if (items.length <= 1)
+                  return;
+                gSummary = new ThreadSummary(
+                  [selectRightMessage(x, gDBView.msgFolder).folderMessage for each (x in items)],
+                  null
+                );
+                gSummary.init();
+                gMessageDisplay.singleMessageDisplay = false;
+                return;
+              } catch (e) {
+                dump("*** Error building the conversation view "+e+"\n");
+              }
+            } else {
+              dump("*** Collection is empty, WTF???\n");
+            }
+        });
+      } catch (e) {
+        dump("*** Error autofetching the conversation "+e+"\n");
+      }
     },
     QueryInterface: XPCOMUtils.generateQI([Ci.nsISupports, Ci.nsISupportsWeakReference, Ci.nsIWebProgressListener])
   };
