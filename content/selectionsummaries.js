@@ -37,6 +37,12 @@ var gconversation = {
 document.addEventListener("load", function f_temp0 () {
   document.removeEventListener("load", f_temp0, true); /* otherwise it's called 20+ times */
 
+  /* For debugging purposes */
+  let consoleService = Components.classes["@mozilla.org/consoleservice;1"].getService(Components.interfaces.nsIConsoleService);
+  function myDump(aMsg) {
+    consoleService.logStringMessage("GConversation: "+aMsg);
+  };
+
   /* Classic */
   const Ci = Components.interfaces;
   const Cc = Components.classes;
@@ -590,7 +596,7 @@ document.addEventListener("load", function f_temp0 () {
             let body = getMessageBody(msgHdr, true);
             let snippet = body.substring(0, SNIPPET_LENGTH-3)+"...";
             fillSnippetAndMsg(snippet, body);
-            dump("*** Got an \"offline message\"\n");
+            myDump("*** Got an \"offline message\"\n");
           } catch (e) {
             Application.console.log("Error fetching the message: "+e);
             /* Ok, that failed too... */
@@ -671,7 +677,7 @@ document.addEventListener("load", function f_temp0 () {
             try {
               forwardType = gPrefBranch.getIntPref("mail.forward_message_mode");
             } catch (e) {
-              dump("Unable to fetch preferred forward mode\n");
+              myDump("Unable to fetch preferred forward mode\n");
             }
             if (forwardType == 0)
               compose(Ci.nsIMsgCompType.ForwardAsAttachment, event);
@@ -693,7 +699,7 @@ document.addEventListener("load", function f_temp0 () {
 
       this.computeSize(htmlpane);
       htmlpane.contentDocument.defaultView.adjustHeadingSize();
-      dump("--- End ThreadSummary::summarize\n\n");
+      myDump("--- End ThreadSummary::summarize\n\n");
     }
   };
 
@@ -713,12 +719,12 @@ document.addEventListener("load", function f_temp0 () {
      * in aItems have been marked or aItems is empty.
      * */
     try {
-      dump("### There are currently "+aSelectedMessages.length+" messages selected\n");
+      myDump("### There are currently "+aSelectedMessages.length+" messages selected\n");
       gconversation.stash.q1 = Gloda.getMessageCollectionForHeaders(aSelectedMessages, {
         onItemsAdded: function (aItems) {
-          dump("### They correspond to "+aItems.length+" GlodaMessages\n");
+          myDump("### They correspond to "+aItems.length+" GlodaMessages\n");
           if (!aItems.length) {
-            dump("!!! GConversation: gloda query returned no messages!\n");
+            myDump("!!! GConversation: gloda query returned no messages!\n");
             k(null, aSelectedMessages, aSelectedMessages[0]);
             return;
           }
@@ -732,7 +738,7 @@ document.addEventListener("load", function f_temp0 () {
              * bug and remove the setTimeout when it's fixed and bump the
              * version requirements in install.rdf.template */
             onQueryCompleted: function (aCollection) {
-              dump("### The complete collection features "+aCollection.items.length+" messages\n");
+              myDump("### The complete collection features "+aCollection.items.length+" messages\n");
               setTimeout(function () k(aCollection, aCollection.items, msg), 0)
             },
           }, true);
@@ -742,7 +748,7 @@ document.addEventListener("load", function f_temp0 () {
         onQueryCompleted: function (aCollection) { },
       }, true);
     } catch (e) {
-      dump("Exception in summarizeThread" + e + "\n");
+      myDump("Exception in summarizeThread" + e + "\n");
       logException(e);
       Components.utils.reportError(e);
       throw(e);
@@ -771,7 +777,7 @@ document.addEventListener("load", function f_temp0 () {
    * to track changes to the ThreadSummary code in Thunderbird more easily. */
   summarizeThread = function(aSelectedMessages, aListener) {
     if (aSelectedMessages.length == 0) {
-      dump("No selected messages\n");
+      myDump("No selected messages\n");
       return false;
     }
     let htmlpane = document.getElementById('multimessage');
@@ -838,7 +844,7 @@ document.addEventListener("load", function f_temp0 () {
       }
       /* ------ end cut here ----- */
     } catch (e) {
-      dump("Exception in summarizeMultipleSelection" + e + "\n");
+      myDump("Exception in summarizeMultipleSelection" + e + "\n");
       Components.utils.reportError(e);
       throw(e);
     }
@@ -932,12 +938,12 @@ document.addEventListener("load", function f_temp0 () {
     onStatusChange: function () {},
     onLocationChange: function (aWebProgress, aRequest, aLocation) {
       try {
-        dump("\n ----- start autofetch -----\n");
+        myDump("----- start autofetch -----\n");
         /* By testing here for the pref, we allow the pref to be changed at
          * run-time and we do not require to restart Thunderbird to take the
          * change into account. */
         if (!g_prefs["auto_fetch"]) {
-          dump("*** Automatically fetching conversations is disabled, skipping...\n");
+          myDump("*** Automatically fetching conversations is disabled, skipping...\n");
           return;
         }
 
@@ -952,31 +958,31 @@ document.addEventListener("load", function f_temp0 () {
         gconversation.stash.wantedUrl = null;
         let isExpanded = false;
         let msgIndex = gFolderDisplay ? gFolderDisplay.selectedIndices[0] : -1;
-        dump("*** msgIndex "+msgIndex+"\n");
+        myDump("*** msgIndex "+msgIndex+"\n");
         if (msgIndex >= 0) {
           let rootIndex = gDBView.findIndexOfMsgHdr(gDBView.getThreadContainingIndex(msgIndex).getChildHdrAt(0), false);
-          dump("*** rootIndex "+rootIndex+"\n");
+          myDump("*** rootIndex "+rootIndex+"\n");
           if (rootIndex >= 0) {
-            dump("isContainer "+gDBView.isContainer(rootIndex)+"\n");
-            dump("isCollapsedThreadAtIndex "+gFolderDisplay.view.isCollapsedThreadAtIndex(rootIndex)+"\n");
+            myDump("isContainer "+gDBView.isContainer(rootIndex)+"\n");
+            myDump("isCollapsedThreadAtIndex "+gFolderDisplay.view.isCollapsedThreadAtIndex(rootIndex)+"\n");
             isExpanded = gDBView.isContainer(rootIndex) && !gFolderDisplay.view.isCollapsedThreadAtIndex(rootIndex);
           }
         }
         if (aLocation.spec == wantedUrl) {
-          dump("*** The user asked to view this specific message, not loading a conversation...\n");
+          myDump("*** The user asked to view this specific message, not loading a conversation...\n");
           return;
         }
         if (aLocation.spec == wantedUrl || isExpanded) {
-          dump("*** The thread is expanded, not loading a conversation...\n");
+          myDump("*** The thread is expanded, not loading a conversation...\n");
           return;
         }
-        dump("*** Seems ok to load the conversation, moving on...\n");
+        myDump("*** Seems ok to load the conversation, moving on...\n");
 
         let msgService;
         try {
           msgService = gMessenger.messageServiceFromURI(aLocation.spec);
         } catch ( { result } if result == Cr.NS_ERROR_FACTORY_NOT_REGISTERED ) {
-          dump("*** Not a message ("+aLocation.spec+")\n");
+          myDump("*** Not a message ("+aLocation.spec+")\n");
           return;
         }
         let msgHdr = msgService.messageURIToMsgHdr(aLocation.QueryInterface(Ci.nsIMsgMessageUrl).uri);
@@ -985,7 +991,7 @@ document.addEventListener("load", function f_temp0 () {
           function (aCollection, aItems, aMsg) {
             if (aCollection) {
               try {
-                dump("*** Got the messages we wanted, displaying...\n");
+                myDump("*** Got the messages we wanted, displaying...\n");
                 let items = removeDuplicates(aCollection.items);
                 if (items.length <= 1)
                   return;
@@ -997,20 +1003,20 @@ document.addEventListener("load", function f_temp0 () {
                 gMessageDisplay.singleMessageDisplay = false;
                 return;
               } catch (e) {
-                dump("*** Error building the conversation view "+e+"\n");
+                myDump("*** Error building the conversation view "+e+"\n");
               }
             } else {
-              dump("*** Collection is empty, WTF???\n");
+              myDump("*** Collection is empty, WTF???\n");
             }
         });
       } catch (e) {
-        dump("*** Error autofetching the conversation "+e+"\n");
+        myDump("*** Error autofetching the conversation "+e+"\n");
       }
     },
     QueryInterface: XPCOMUtils.generateQI([Ci.nsISupports, Ci.nsISupportsWeakReference, Ci.nsIWebProgressListener])
   };
   messagepane.addProgressListener(gconversation.stash.uriWatcher);
 
-  dump("*** gConversation loaded\n");
+  myDump("*** gConversation loaded\n");
 
 }, true);
