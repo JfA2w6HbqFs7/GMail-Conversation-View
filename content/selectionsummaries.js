@@ -40,7 +40,7 @@ document.addEventListener("load", function f_temp0 () {
   /* For debugging purposes */
   let consoleService = Components.classes["@mozilla.org/consoleservice;1"].getService(Components.interfaces.nsIConsoleService);
   function myDump(aMsg) {
-    consoleService.logStringMessage("GConversation: "+aMsg);
+    dump(aMsg);
   };
 
   /* Classic */
@@ -67,6 +67,7 @@ document.addEventListener("load", function f_temp0 () {
   let g_prefs = {};
   g_prefs["monospaced"] = prefs.getBoolPref("monospaced");
   g_prefs["monospaced_snippets"] = prefs.getBoolPref("monospaced_snippets");
+  g_prefs["extra_unread_color"] = prefs.getBoolPref("extra_unread_color");
   g_prefs["focus_first"] = prefs.getBoolPref("focus_first");
   g_prefs["html"] = prefs.getBoolPref("html");
   g_prefs["hide_quote_length"] = prefs.getIntPref("hide_quote_length");
@@ -98,6 +99,7 @@ document.addEventListener("load", function f_temp0 () {
         case "auto_fetch":
         case "auto_mark_read":
         case "disable_error_empty_collection":
+        case "extra_unread_color":
           g_prefs[aData] = prefs.getBoolPref(aData);
           break;
         case "hide_quote_length":
@@ -235,41 +237,45 @@ document.addEventListener("load", function f_temp0 () {
                                 <div class="attachment" style="display: none">
                                   <img src="chrome://messenger/skin/icons/attachment-col.png" />
                                 </div>
-                                <div class="toggle-font link"><img src="chrome://gconversation/skin/font.png" /></div>
+                                <div class="toggle-font link" style="display: none"></div>
                                 <div class="draft-warning"></div>
                               </div>
                               <div class="snippet snippetmsg"></div>
                               <div class="snippet fullmsg" style="display: none"></div>
                               <div xmlns:xul="http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul" class="snippet htmlmsg" style="display: none"></div>
-                              <div class="fastreply">
-                                <span class="fastlink link-reply">{replyTxt}</span> - 
-                                <span class="fastlink link-reply-all">{replyAllTxt}</span> - 
-                                <span class="fastlink link-forward">{forwardTxt}</span>
-                                <span class="fastlink link-more">...</span>
-                                <span style="display: none;">
-                                  -
-                                  <span class="fastlink link-reply-list">{replyList}</span> -
-                                  <span class="fastlink link-edit-new">{editNew}</span>
-                                </span>
+                              <div class="bottombox">
+                                <div class="fastreply">
+                                  <span class="fastlink link-reply">{replyTxt}</span> - 
+                                  <span class="fastlink link-reply-all">{replyAllTxt}</span> - 
+                                  <span class="fastlink link-forward">{forwardTxt}</span>
+                                  <span class="fastlink link-more">...</span>
+                                  <span style="display: none;">
+                                    -
+                                    <span class="fastlink link-reply-list">{replyList}</span> -
+                                    <span class="fastlink link-edit-new">{editNew}</span>
+                                  </span>
+                                </div>
+                                <div class="messagearrow">
+                                 <img class="msgarrow" src="chrome://gconversation/skin/down.png" />
+                               </div>
                               </div>
                             </div>
                           </div>;
-
-        let msgExtraContents = <div class="messagearrow">
-                                 <img class="msgarrow" src="chrome://gconversation/skin/down.png" />
-                               </div>;
 
         let msgNode = htmlpane.contentDocument.createElement("div");
         // innerHTML is safe here because all of the data in msgContents is
         // either generated from integers or escaped to be safe.
         msgNode.innerHTML = msgContents.toXMLString();
-        msgNode.innerHTML += msgExtraContents.toXMLString();
-        msg_classes += " "+i;
         _mm_addClass(msgNode, msg_classes);
         if (g_prefs["reverse_order"]) {
           messagesElt.insertBefore(msgNode, messagesElt.firstChild);
         } else {
           messagesElt.appendChild(msgNode);
+        }
+
+        /* Deal with the extra color pref */
+        if (g_prefs["extra_unread_color"]) {
+          _mm_addClass(msgNode, "extra-unread-color");
         }
 
         /* Warn the user if this is a draft */
@@ -457,11 +463,15 @@ document.addEventListener("load", function f_temp0 () {
                   let extraFormatting = function (aDoc) {
                     /* Launch various heuristics to convert most common quoting styles
                      * to real blockquotes. */
-                    convertOutlookQuotingToBlockquote(aDoc);
-                    convertHotmailQuotingToBlockquote1(aDoc);
-                    convertHotmailQuotingToBlockquote2(iframe.contentWindow, aDoc, g_prefs["hide_quote_length"]);
-                    convertForwardedToBlockquote(aDoc);
-                    fusionBlockquotes(aDoc);
+                    try {
+                      convertOutlookQuotingToBlockquote(aDoc);
+                      convertHotmailQuotingToBlockquote1(aDoc);
+                      convertHotmailQuotingToBlockquote2(iframe.contentWindow, aDoc, g_prefs["hide_quote_length"]);
+                      convertForwardedToBlockquote(aDoc);
+                      fusionBlockquotes(aDoc);
+                    } catch (e) {
+                      Application.console.log("GConversation error while parsing quoted parts: "+e);
+                    }
                     /* This function adds a show/hide quoted text link to every topmost
                      * blockquote. Nested blockquotes are not taken into account. */
                     let walk = function (elt) {
@@ -582,8 +592,8 @@ document.addEventListener("load", function f_temp0 () {
             let [hasHtml, html] = MimeMessageToHTML(aMimeMsg);
             if (hasHtml && g_prefs["html"]) {
               fillSnippetAndHTML(snippet, html, meta.author);
-              toggleFontNode.style.display = "none";
             } else {
+              toggleFontNode.style.display = "";
               fillSnippetAndMsg(snippet, body, meta.author);
             }
           });
