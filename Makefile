@@ -1,4 +1,5 @@
-EXCLUDES = $(addprefix --exclude , $(shell find . -iname '.*.sw*'))
+#EXCLUDES = $(addprefix -x , $(shell find . -iname '.*.sw*'))
+EXCLUDES = ignoreme $(shell find . -iname '.*.sw*')
 
 all: debug_template package upload
 
@@ -6,9 +7,12 @@ release: release_template package upload
 
 package: jarify dist
 
+clean:
+	rm -f gconv.jar gconversation.xpi install.rdf
+
 jarify:
 	rm -f gconv.jar
-	zip gconv.jar $(EXCLUDES) -r content/ skin/ locale/
+	zip gconv.jar -r content/ skin/ locale/ -x $(EXCLUDES)
 
 dist:
 	rm -f gconversation.xpi
@@ -22,9 +26,7 @@ upload:
 	echo "cd jonathan/files\nput gconversation.xpi\nput Changelog Changelog_GConversation" | ftp xulforum@ftp.xulforum.org
 
 debug_template:
-	cp -f install.rdf.template install.rdf
-	sed -i s/__REPLACEME__/\.$(shell date +%y%m%d)pre/ install.rdf
+	sed s/__REPLACEME__/\.$(shell date +%y%m%d)pre/ install.rdf.template > install.rdf
 
 release_template:
-	cp -f install.rdf.template install.rdf
-	sed -i s/__REPLACEME__// install.rdf
+	sed s/__REPLACEME__// install.rdf.template > install.rdf

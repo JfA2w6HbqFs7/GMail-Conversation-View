@@ -1,14 +1,21 @@
 /* Toolbar */
-.attachment, .toggle-font {
+.attachment {
   display: inline;
   vertical-align: middle;
+}
+
+.message > .row > .header > .wrappedsender > .toggle-font {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  background-image: url(chrome://gconversation/skin/font.png);
 }
 
 /* General stuff */
 
 .monospaced-message {
   font-family: -moz-fixed;
-  white-space: pre;
+  white-space: pre-wrap;
 }
 
 .monospaced-snippet {
@@ -20,13 +27,17 @@
   -moz-border-radius: 3px 0 3px 0;
   border: 1px solid #888;
   margin-bottom: 2ex;
-  padding-bottom: 12px;
 }
 
 .header {
   margin-left: 0;
   padding-top: 0;
+  padding-bottom: 0;
   position: relative;
+}
+
+.header .date {
+  color: black;
 }
 
 .wrappedsender, .wrappedsubject, .snippet {
@@ -36,6 +47,12 @@
 .wrappedsender, .wrappedsubject {
   border-bottom: 1px solid #888;
   margin-bottom: 1em;
+  background-color: rgba(114,159,207,.1);
+}
+
+.message.unread .wrappedsender,
+.message.unread .wrappedsubject {
+  background-color: rgba(114,159,207,.3);
 }
 
 .draft-warning {
