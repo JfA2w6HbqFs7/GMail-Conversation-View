@@ -634,12 +634,15 @@ document.addEventListener("load", function f_temp0 () {
             let [snippet, meta] = mimeMsgToContentSnippetAndMeta(aMimeMsg, aMsgHdr.folder, SNIPPET_LENGTH);
             let hasAttachment = MimeMessageHasAttachment(aMimeMsg);
             if (hasAttachment) {
+              /* display the attachment icon list */
               let attachmentContainer = msgNode.getElementsByClassName("attachment")[0];
               attachmentContainer.style.display = "";
 
+              /* get the list of attachments */
               let attachmentList = MimeMessageGetAttachments(aMimeMsg);
+              
+              /* add an icon for each attachment */
               for (let x=0; x<attachmentList.length; x++) {
-                /* add an icon for each attachment */
                 let attachmentIcon = '<img class="attachment' + x + '" style="padding-right: 10px; ';
                 if (x == 0) {
                   attachmentIcon = attachmentIcon + 'padding-left: 10px; ';
