@@ -634,9 +634,11 @@ document.addEventListener("load", function f_temp0 () {
              * quoted text */
             let [snippet, meta] = mimeMsgToContentSnippetAndMeta(aMimeMsg, aMsgHdr.folder, SNIPPET_LENGTH);
             let hasAttachment = MimeMessageHasAttachment(aMimeMsg);
-            if (hasAttachment)
+            if (hasAttachment) {
               msgNode.getElementsByClassName("attachment")[0].style.display = "";
-
+              alert(MimeMessageGetAttachments(aMimeMsg));
+            }
+            
             snippetMsgNode.textContent = snippet;
           });
         } catch (e if e.result == Components.results.NS_ERROR_FAILURE) {

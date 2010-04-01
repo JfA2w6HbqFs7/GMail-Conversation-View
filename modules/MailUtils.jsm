@@ -40,7 +40,7 @@ var EXPORTED_SYMBOLS = ['getMessageBody', 'selectRightMessage',
   'convertOutlookQuotingToBlockquote', '_mm_toggleClass',
   'convertForwardedToBlockquote', 'msgHdrToNeckoURL',
   'fusionBlockquotes', 'msgHdrIsDraft',
-  'msgHdrsMarkAsRead']
+  'msgHdrsMarkAsRead', 'MimeMessageGetAttachments']
 
 const Ci = Components.interfaces;
 const Cc = Components.classes;
@@ -216,6 +216,11 @@ function MimeMessageHasAttachment(aMsg) {
     return true;
   }*/
   return aMsg.allAttachments.some(function (x) x.isRealAttachment);
+}
+
+/* Return the attachments for a given MimeMessage */
+function MimeMessageGetAttachments(aMsg) {
+  return aMsg.allAttachments;
 }
 
 /* Create a blockquote before "marker" and insert all elements after that into
