@@ -635,7 +635,8 @@ document.addEventListener("load", function f_temp0 () {
             let [snippet, meta] = mimeMsgToContentSnippetAndMeta(aMimeMsg, aMsgHdr.folder, SNIPPET_LENGTH);
             let hasAttachment = MimeMessageHasAttachment(aMimeMsg);
             if (hasAttachment) {
-              msgNode.getElementsByClassName("attachment")[0].style.display = "";
+              let attachmentContainer = msgNode.getElementsByClassName("attachment")[0];
+              attachmentContainer.style.display = "";
               alert(MimeMessageGetAttachments(aMimeMsg));
             }
             
