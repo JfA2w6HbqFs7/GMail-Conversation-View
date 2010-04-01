@@ -276,7 +276,6 @@ document.addEventListener("load", function f_temp0 () {
                                 <div class="date">{date}</div>
                                 <div class="tags"></div>
                                 <div class="attachment" style="display: none">
-                                  <img src="chrome://messenger/skin/icons/attachment-col.png" />
                                 </div>
                                 <div class="toggle-font link" style="display: none"></div>
                                 <div class="draft-warning"></div>
@@ -637,7 +636,20 @@ document.addEventListener("load", function f_temp0 () {
             if (hasAttachment) {
               let attachmentContainer = msgNode.getElementsByClassName("attachment")[0];
               attachmentContainer.style.display = "";
-              alert(MimeMessageGetAttachments(aMimeMsg));
+
+              let attachmentList = MimeMessageGetAttachments(aMimeMsg);
+              for (let x=0; x<attachmentList.length; x++) {
+                /* add an icon for each attachment */
+                let attachmentIcon = '<img class="attachment' + x + '" style="padding-right: 10px; ';
+                if (x == 0) {
+                  attachmentIcon = attachmentIcon + 'padding-left: 10px; ';
+                }
+                attachmentIcon = attachmentIcon + 
+                  '" src="chrome://messenger/skin/icons/attachment-col.png" />';
+                attachmentContainer.innerHTML = attachmentContainer.innerHTML + attachmentIcon;
+              }   
+              
+              alert(msgNode.getElementsByClassName("attachment0")[0]);
             }
             
             snippetMsgNode.textContent = snippet;
